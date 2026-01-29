@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Un Detalle Para Ti</title>
+    <link href="https://fonts.googleapis.com/css2?family=Parisienne&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for full screen background */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #05050a; /* Azul muy oscuro casi negro */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            font-family: 'Georgia', serif;
+        }
+
+        canvas#starCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0; /* Behind other content */
+        }
+
+        /* Gradient overlay for depth (Nebula) */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, rgba(15, 20, 60, 0.4) 0%, transparent 80%);
+            z-index: 1; /* Above canvas, below main content */
+        }
+
+        /* Dino Modal Styles */
+        .modal-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+        
+        #dinoCanvas {
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1));
+            cursor: pointer;
+            background-color: #f7fee7; /* Fondo verde muy pálido */
+            border-radius: 20px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: white;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        #open-dino-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 250;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(45deg, #fb923c, #ff43b6);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 67, 182, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        #open-dino-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 67, 182, 0.6);
+        }
+
+        .dino-message {
+            position: absolute;
+            top: 10%; /* Adjusted for better visibility with the dino */
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(208, 10, 10, 0.711);
+            text-align: center;
+            font-family: 'Parisienne', cursive;
+            font-size: 2.2em; /* Slightly larger for impact */
+            text-shadow: 0 0 8px rgba(255,255,255,0.8), 0 0 15px rgba(255,255,255,0.6);
+            z-index: 310; /* Above canvas, below close button */
+            max-width: 90%;
+            line-height: 1.3;
+            padding: 10px; /* Add some padding for better readability */
+        }
+
+        /* Existing flower styles */
+        .flower{
+            position: relative;
+            z-index: 10;
+        }
+
+        .flower__glass{
+            width:20vmin;
+            height: 30vmin;
+            background-image: linear-gradient(to left,#142544,#1a9092);
+            clip-path: polygon(0 0, 100% 0, 85% 100%, 15% 100%);
+            opacity: .8;
+            position: relative;
+        }
+
+        .flower__glass::after{
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background-color: #182843;
+            width: 100%;
+            height: 2vmin;
+        }
+
+        .flower__glass::before{
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background-image: linear-gradient(to left,#142544,#1b6d6e);
+            width: 100%;
+            height: 15vmin;
+        }
+
+        .f-wrapper{ position: absolute; left: 45%; bottom: 2vmin; }
+        .f-wrapper--2{ left: 50%; bottom: 5%; transform-origin: 10% left; transform: rotate(20deg); }
+        .f-wrapper--3{ left: 30%; bottom: 5%; transform-origin: 10% left; transform: rotate(-10deg); }
+        .f-wrapper--3 .flower__line{ height: 45vmin; position: relative; }
+        .f-wrapper--3 .flower__line::after{ content: ''; position: absolute; left:0; top: 0; width: 6vmin; height: 6vmin; transform: translate(-69%,-30%) rotate(-5deg); border-radius:10vmin 10vmin 0 0; border: 2vmin solid  #104d4e; border-bottom: transparent; border-left: transparent; }
+        .f-wrapper--3 .flower__line::before{ content: ''; position: absolute; left:-40%; top: -1%; width: 6vmin; height: 2vmin; transform-origin: right; transform: translate(-100%,-80%) rotate(-20deg); background-color: #104d4e; border-radius: 2vmin; }
+        .f-wrapper--3 .flower__line{ background-image: linear-gradient(to top,#142544,#104d4e); }
+        .f-wrapper--2 .flower__line{ height: 45vmin; }
+        .f-wrapper--2 .f{ transform: translateX(-50%) rotate(20deg); }
+        .f-wrapper--3 .f{ transform: translate(-350%,-50%) rotate(-120deg); }
+        .f-wrapper--2 .flower__leaf:not(:first-child){ width: 3.8vmin; height: 10vmin; background-image: linear-gradient(to bottom, #ff43b6 ,#c22887, #1a233a 99%); }
+        .f-wrapper--3 .flower__leaf:not(:first-child){ width: 3.8vmin; height: 10vmin; background-image: linear-gradient(to bottom, #ad2be0 ,#712291, #1a233a 99%); }
+        .f-wrapper--3 .flower__leaf--1{ width: 8vmin; height: 10vmin; bottom: 2vmin; background-color: #ad2be0; }
+        .f-wrapper--2 .flower__leaf--1{ width: 8vmin; height: 10vmin; bottom: 2vmin; background-color: #de118b; }
+        .f-wrapper--2 .f .flower__leaf--8{ width: 10vmin; height: 9vmin; bottom: 3vmin; left: -30%; transform: rotate(-50deg); background-image: linear-gradient(to left bottom, #ff43b6 ,#4d1337);; }
+        .f-wrapper--3 .f .flower__leaf--8{ width: 10vmin; height: 9vmin; left: -10% !important; background-image: linear-gradient(to left bottom, #ad2be0 ,#712291);; }
+        
+        .flower__line{ width: 2vmin; height: 56vmin; background-image: linear-gradient(to left top,#82fdff 20%,#142544,#104d4e); border-radius: 4vmin; }
+        .f{ position: absolute; top: 1vmin; left: 50%; transform: translateX(-50%) rotate(-10deg); width: 2vmin; height: 2vmin; }
+        .flower__leaf{ position: absolute; left: 50%; bottom: 2vmin; transform: translateX(-50%); width: 5vmin; height: 14vmin; background-image: linear-gradient(to bottom, #ffa085 ,#fa7373, #1a233a 99%); clip-path: ellipse(50% 50% at 50% 50%); transform-origin: center bottom; animation: open-flower 2s 1s backwards; }
+        .flower__leaf--1{ width: 10vmin; height: 12vmin; bottom: 3vmin; border-radius: 50% 50% 50% 50% / 80% 80% 20% 20%; background-color: #e24f5f; background-image: none; animation: open-flowe--middle  1.4s 1s backwards; }
+        .flower__leaf--2{ transform: translateX(-50%) rotate(-30deg); }
+        .flower__leaf--3{ transform: translateX(-50%) rotate(-50deg); }
+        .flower__leaf--4{ transform: translateX(-50%) rotate(-70deg); }
+        .flower__leaf--5{ transform: translateX(-50%) rotate(30deg); }
+        .flower__leaf--6{ transform: translateX(-50%) rotate(50deg); }
+        .flower__leaf--7{ transform: translateX(-50%) rotate(70deg); }
+        .flower__leaf--8{ width: 13vmin; height: 11vmin; bottom: 6vmin; left: -30%; border-radius: none; clip-path: none; border-radius: 10vmin 2vmin 10vmin 2vmin; transform: rotate(-55deg); background-image: linear-gradient(to left bottom, #ffa085 ,#eb8b8b,#492f2f 98%); }
+        .flower__fall-down--yellow{ animation: flower-fall-down-yellow  8s 1.2s linear forwards; }
+        .flower__fall-down--pink{ animation: flower-fall-down-pink  5s 1.2s linear forwards; }
+        .flower__fall-down--purple{ bottom: 4vmin; animation:flower-fall-down-purple  6s 1.2s linear forwards, flower-falling 6s 7.2s linear infinite; }
+        
+        @keyframes open-flower{ 0%{ transform:  translateX(-50%) rotate(0); } }
+        @keyframes open-flowe--middle { 0%{ opacity: 0; transform: translateX(-50%) scale(0); } }
+        @keyframes flower-fall-down-pink { 0%{ transform: rotate(-55deg); } 50%{ transform: rotateX(-100deg); } 100%{ transform:translate(2vmin,28vmin); } }
+        @keyframes flower-fall-down-yellow { 0%{ transform: rotate(-55deg); } 50%{ bottom: 3vmin; transform: rotateX(-100deg); } 100%{ transform:translate(2vmin,70vmin) rotate(150deg); } }
+        @keyframes flower-fall-down-purple { 0%{ transform: rotate(-50deg); } 25%{ bottom: 1vmin ; transform: rotateX(-100deg); perspective: 0px; } 50%{ perspective: 0px; transform:translate(-30vmin,2vmin) rotate(90deg); } 75%{ perspective: 0px; transform:translate(-34vmin,-2vmin); } 100%{ transform-origin: center; transform:translate(-34vmin,-2vmin) rotateY(-80deg) rotateX(35deg); } }
+        @keyframes flower-falling { 0%,100%{ transform-origin: center; transform:translate(-34vmin,-2vmin) rotateY(-80deg) rotateX(35deg); } 25%{ transform-origin: center; transform:translate(-34.4vmin,-2vmin) rotateY(-84deg) rotateX(35deg); } 50%{ transform-origin: center; transform:translate(-32vmin,-4.2vmin) rotateY(-80deg) rotateX(35deg); } 75%{ transform-origin: center; transform:translate(-36vmin,1.1vmin) rotateY(-80deg) rotateX(35deg); } }
+        @keyframes sway { 0%, 100% { transform: rotate(5deg); } 50% { transform: rotate(-5deg); } }
+        @keyframes petal-flutter { 0%, 100% { transform: rotate(0.5deg); } 50% { transform: rotate(-0.5deg); } }
+        
+        /* Preserved Styles for .birthday-message and #music-player */
+        .birthday-message { position: fixed; top: 60%; left: 15vw; transform: translateY(-50%); color: #f1faee; text-align: left; z-index: 100; max-width: 350px; background: transparent; font-family: 'Parisienne', cursive; }
+        .birthday-message h2 { font-size: 2.8em; margin-bottom: 15px; color: #ff43b6; text-shadow: 0 0 5px #ff43b6, 0 0 15px #ff43b6, 0 0 30px #ff43b6; animation: fadeIn 2s ease-in-out; }
+        .birthday-message p { font-size: 1.6em; line-height: 1.7; text-shadow: 0 0 3px #f1faee, 0 0 8px #f1faee; animation: fadeIn 2.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #music-player { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; z-index: 200; background: linear-gradient(145deg, #1e2a3a, #1a2330); border-radius: 15px; border: 1px solid #457b9d; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); }
+        #music-player::-webkit-media-controls-panel { background: transparent; }
+        #music-player::-webkit-media-controls-play-button,
+        #music-player::-webkit-media-controls-mute-button { background-color: #a8dadc; border-radius: 50%; }
+        #music-player::-webkit-media-controls-current-time-display,
+        #music-player::-webkit-media-controls-time-remaining-display { color: #f1faee; font-family: monospace; }
+        #music-player::-webkit-media-controls-timeline { background-color: #457b9d; border-radius: 10px; margin: 0 10px; }
+        #music-player::-webkit-media-controls-volume-slider { background-color: #457b9d; border-radius: 10px; }
+
+        .second-message {
+            position: fixed;
+            top: 40%; /* Adjusted for good vertical placement */
+            right: 15vw; /* Position on the right side, analogous to left: 15vw */
+            transform: translateY(-50%);
+            color: #f1faee;
+            text-align: right; /* Align text to the right */
+            z-index: 100;
+            max-width: 350px;
+            background: transparent;
+            font-family: 'Parisienne', cursive;
+        }
+
+        .second-message p {
+            font-size: 1.6em;
+            line-height: 1.7;
+            text-shadow: 0 0 3px #f1faee, 0 0 8px #f1faee;
+            animation: fadeIn 2.5s ease-in-out; /* Reuse existing fadeIn animation */
+        }
+
+        @media (max-width: 768px) {
+            .birthday-message { left: 50%; transform: translateX(-50%); top: 20px; width: 90%; max-width: none; text-align: center; }
+            #open-dino-btn { top: auto; bottom: 80px; left: 50%; transform: translateX(-50%); }
+            .dino-message { font-size: 1.5em; top: 5%; } /* Adjust for mobile */
+            .second-message {
+                right: 50%;
+                transform: translateX(-50%); /* Center for mobile */
+                top: auto; /* Remove fixed top */
+                bottom: 150px; /* Position above music player for mobile */
+                width: 90%;
+                max-width: none;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background -->
+    <div class="overlay"></div>
+    <canvas id="starCanvas"></canvas>
+    
+    <!-- Main Content -->
+    <button id="open-dino-btn">🎁 Un Regalo Especial 🎁</button>
+
+    <div class="birthday-message">
+        <h2>Feliz Cumpleaños, Mi Amor</h2>
+        <p>Eres la flor más hermosa en el jardín de mi vida. Cada día a tu lado es un regalo. Espero que tu día especial esté lleno de alegría, risas y todo el amor que mereces.</p>
+    </div>
+
+   
+    <div class="flower">
+        <!-- Flower HTML remains unchanged -->
+        <div class="f-wrapper">
+            <div class="flower__line"></div>
+            <div class="f">
+                <div class="flower__leaf flower__leaf--1"></div>
+                <div class="flower__leaf flower__leaf--2"></div>
+                <div class="flower__leaf flower__leaf--3"></div>
+                <div class="flower__leaf flower__leaf--4"></div>
+                <div class="flower__leaf flower__leaf--5"></div>
+                <div class="flower__leaf flower__leaf--6"></div>
+                <div class="flower__leaf flower__leaf--7"></div>
+                <div class="flower__leaf flower__leaf--8 flower__fall-down--yellow"></div>
+            </div>
+        </div>
+        <div class="f-wrapper f-wrapper--2">
+            <div class="flower__line"></div>
+            <div class="f">
+                <div class="flower__leaf flower__leaf--1"></div>
+                <div class="flower__leaf flower__leaf--2"></div>
+                <div class="flower__leaf flower__leaf--3"></div>
+                <div class="flower__leaf flower__leaf--4"></div>
+                <div class="flower__leaf flower__leaf--5"></div>
+                <div class="flower__leaf flower__leaf--6"></div>
+                <div class="flower__leaf flower__leaf--7"></div>
+                <div class="flower__leaf flower__leaf--8 flower__fall-down--pink"></div>
+            </div>
+        </div>
+        <div class="f-wrapper f-wrapper--3">
+            <div class="flower__line"></div>
+            <div class="f">
+                <div class="flower__leaf flower__leaf--1"></div>
+                <div class="flower__leaf flower__leaf--2"></div>
+                <div class="flower__leaf flower__leaf--3"></div>
+                <div class="flower__leaf flower__leaf--4"></div>
+                <div class="flower__leaf flower__leaf--5"></div>
+                <div class="flower__leaf flower__leaf--6"></div>
+                <div class="flower__leaf flower__leaf--7"></div>
+                <div class="flower__leaf flower__leaf--8 flower__fall-down--purple"></div>
+            </div>
+        </div>
+        <div class="flower__glass"></div>
+    </div>
+
+    <audio id="music-player" controls autoplay loop>
+        <source src="https://javier1500x.github.io/cancion/ssstik.io_1769658326911.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+    
+    <!-- Dino Modal -->
+    <div id="dino-modal" class="modal-container">
+        <button id="close-dino-btn" class="close-btn">&times;</button>
+        <div class="dino-message">
+            <p>Para ti, mi vida, mi amor. Siempre me gusta complacerte mi reyna. Te amo.</p>
+        </div>
+        <canvas id="dinoCanvas"></canvas>
+    </div>
+
+    <!-- Star Rain Script -->
+    <script>
+        const starCanvas = document.getElementById('starCanvas');
+        const starCtx = starCanvas.getContext('2d');
+        let width, height, stars = [], meteors = [];
+        const STAR_COUNT = 400;
+        const METEOR_CHANCE = 0.02;
+
+        function initStars() { resizeStars(); createStars(); animateStars(); }
+        function resizeStars() { width = window.innerWidth; height = window.innerHeight; starCanvas.width = width; starCanvas.height = height; }
+        window.addEventListener('resize', resizeStars);
+
+        class Star {
+            constructor() { this.reset(); }
+            reset() { this.x = Math.random() * width; this.y = Math.random() * height; this.size = Math.random() * 1.5; this.opacity = Math.random(); this.blinkSpeed = 0.005 + Math.random() * 0.015; }
+            draw() { this.opacity += this.blinkSpeed; if (this.opacity > 1 || this.opacity < 0) { this.blinkSpeed *= -1; } starCtx.fillStyle = `rgba(255, 255, 255, ${Math.abs(this.opacity)})`; starCtx.beginPath(); starCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); starCtx.fill(); }
+        }
+        class Meteor {
+            constructor() { this.reset(); }
+            reset() { this.x = Math.random() * width; this.y = -20; this.length = 80 + Math.random() * 150; this.speed = 10 + Math.random() * 15; this.angle = (Math.PI / 4) + (Math.random() * 0.2); this.opacity = 1; this.active = true; }
+            update() { this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed; this.opacity -= 0.015; if (this.opacity <= 0 || this.y > height || this.x > width) { this.active = false; } }
+            draw() { if (!this.active) return; starCtx.save(); starCtx.strokeStyle = `rgba(255, 255, 255, ${this.opacity})`; starCtx.lineWidth = 2; starCtx.lineCap = 'round'; starCtx.beginPath(); starCtx.moveTo(this.x, this.y); starCtx.lineTo(this.x - Math.cos(this.angle) * this.length, this.y - Math.sin(this.angle) * this.length); starCtx.stroke(); starCtx.restore(); }
+        }
+        function createStars() { stars = []; for (let i = 0; i < STAR_COUNT; i++) { stars.push(new Star()); } }
+        function animateStars() { starCtx.fillStyle = '#05050a'; starCtx.fillRect(0, 0, width, height); stars.forEach(star => star.draw()); if (Math.random() < METEOR_CHANCE) { meteors.push(new Meteor()); } for (let i = meteors.length - 1; i >= 0; i--) { meteors[i].update(); meteors[i].draw(); if (!meteors[i].active) { meteors.splice(i, 1); } } requestAnimationFrame(animateStars); }
+        initStars();
+    </script>
+    
+    <!-- Dino Animation Script -->
+    <script>
+        const dinoCanvas = document.getElementById('dinoCanvas');
+        const dinoCtx = dinoCanvas.getContext('2d');
+        dinoCanvas.width = 500;
+        dinoCanvas.height = 600;
+        let mouse = { x: 250, y: 300 };
+        let blinkFrame = 0;
+        let time = 0;
+        
+        window.addEventListener('mousemove', (e) => {
+            const rect = dinoCanvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        function drawDino() {
+            dinoCtx.clearRect(0, 0, dinoCanvas.width, dinoCanvas.height);
+            time += 0.05;
+            const centerX = 250;
+            const centerY = 450;
+            const breathing = Math.sin(time) * 4;
+            const headBob = Math.cos(time * 0.8) * 3;
+
+            dinoCtx.save();
+            dinoCtx.translate(centerX, centerY);
+            dinoCtx.fillStyle = '#4ade80';
+            dinoCtx.strokeStyle = '#166534';
+            dinoCtx.lineWidth = 4;
+            dinoCtx.beginPath();
+            dinoCtx.moveTo(40, -10);
+            dinoCtx.quadraticCurveTo(120, 10, 100, 60);
+            dinoCtx.quadraticCurveTo(80, 80, 20, 70);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            const drawLeg = (x, y) => { dinoCtx.beginPath(); dinoCtx.roundRect(x, y, 50, 60, 20); dinoCtx.fill(); dinoCtx.stroke(); };
+            drawLeg(-90, 20);
+            drawLeg(30, 20);
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(0, 20 + breathing/2, 75, 85, 0, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            dinoCtx.fillStyle = '#bef264';
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(0, 30 + breathing/2, 50, 65, 0, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.fillStyle = '#4ade80';
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(-50, 10 + breathing, 15, 35, Math.PI/10, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(40, 15 + breathing, 18, 38, -Math.PI/8, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            dinoCtx.restore();
+
+            const headX = centerX;
+            const headY = centerY - 130 + headBob;
+            dinoCtx.save();
+            dinoCtx.translate(headX, headY);
+            dinoCtx.fillStyle = '#166534';
+            for(let i=0; i<3; i++) { dinoCtx.beginPath(); dinoCtx.arc(-20 + (i*20), -105, 15, 0, Math.PI * 2); dinoCtx.fill(); }
+            dinoCtx.fillStyle = '#4ade80';
+            dinoCtx.beginPath();
+            dinoCtx.roundRect(-110, -100, 220, 190, [80, 80, 90, 90]);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(-30, -95, 30, 45, -Math.PI/6, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.stroke();
+            dinoCtx.fillStyle = '#fb923c';
+            dinoCtx.globalAlpha = 0.6;
+            dinoCtx.beginPath();
+            dinoCtx.ellipse(-75, 35, 25, 15, 0, 0, Math.PI * 2);
+            dinoCtx.ellipse(75, 35, 25, 15, 0, 0, Math.PI * 2);
+            dinoCtx.fill();
+            dinoCtx.globalAlpha = 1.0;
+            dinoCtx.strokeStyle = '#166534';
+            dinoCtx.lineWidth = 3;
+            dinoCtx.lineCap = 'round';
+            dinoCtx.beginPath();
+            dinoCtx.arc(0, 25, 25, 0.2 * Math.PI, 0.8 * Math.PI);
+            dinoCtx.stroke();
+            
+            const lookX = (mouse.x - headX) * 0.05;
+            const lookY = (mouse.y - headY) * 0.05;
+            if (Math.random() < 0.008 && blinkFrame <= 0) blinkFrame = 12;
+            if (blinkFrame > 0) {
+                dinoCtx.beginPath();
+                dinoCtx.moveTo(-80, 10); dinoCtx.lineTo(-30, 10);
+                dinoCtx.moveTo(30, 10); dinoCtx.lineTo(80, 10);
+                dinoCtx.stroke();
+                blinkFrame--;
+            } else {
+                const drawEye = (x) => {
+                    dinoCtx.fillStyle = '#311b92';
+                    dinoCtx.beginPath();
+                    dinoCtx.ellipse(x + lookX, 10 + lookY, 32, 38, 0, 0, Math.PI * 2);
+                    dinoCtx.fill();
+                    dinoCtx.fillStyle = 'white';
+                    dinoCtx.beginPath();
+                    dinoCtx.arc(x + lookX - 10, 10 + lookY - 15, 8, 0, Math.PI * 2);
+                    dinoCtx.arc(x + lookX + 5, 10 + lookY + 5, 4, 0, Math.PI * 2);
+                    dinoCtx.fill();
+                };
+                drawEye(-55);
+                drawEye(55);
+            }
+            dinoCtx.restore();
+            requestAnimationFrame(drawDino);
+        }
+        drawDino();
+    </script>
+    
+    <!-- Modal Control Script -->
+    <script>
+        document.getElementById('open-dino-btn').addEventListener('click', () => {
+            document.getElementById('dino-modal').style.display = 'flex';
+        });
+        document.getElementById('close-dino-btn').addEventListener('click', () => {
+            document.getElementById('dino-modal').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
